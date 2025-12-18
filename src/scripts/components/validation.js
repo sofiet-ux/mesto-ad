@@ -83,7 +83,7 @@ const checkInputValidity = (
 ) => {
   if (inputElement.validity.patternMismatch) {
     inputElement.setCustomValidity(
-      inputElement.dataset.errorMessage
+      inputElement.validity.tooShort? `Поле должно содержать от ${inputElement.getAttribute('minlength')} до ${inputElement.getAttribute('maxlength')} символов.` : inputElement.dataset.errorMessage
     );
   } else {
     inputElement.setCustomValidity('');
