@@ -99,7 +99,6 @@ openProfileFormButton.addEventListener("click", () => {
   formList.forEach((formElement) => {
     clearValidation(formElement, validationSettings)
   })
-  // enableValidation(validationSettings); 
 });
 
 profileAvatar.addEventListener("click", () => {
