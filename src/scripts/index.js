@@ -1,115 +1,235 @@
-/*
-  Файл index.js является точкой входа в наше приложение
-  и только он должен содержать логику инициализации нашего приложения
-  используя при этом импорты из других файлов
-
-  Из index.js не допускается что то экспортировать
-*/
-
-import { initialCards } from "./cards.js";
-import { createCardElement, deleteCard, likeCard } from "./components/card.js";
-import { openModalWindow, closeModalWindow, setCloseModalWindowEventListeners } from "./components/modal.js";
-
-// DOM узлы
-const placesWrap = document.querySelector(".places__list");
-const profileFormModalWindow = document.querySelector(".popup_type_edit");
-const profileForm = profileFormModalWindow.querySelector(".popup__form");
-const profileTitleInput = profileForm.querySelector(".popup__input_type_name");
-const profileDescriptionInput = profileForm.querySelector(".popup__input_type_description");
-
-const cardFormModalWindow = document.querySelector(".popup_type_new-card");
-const cardForm = cardFormModalWindow.querySelector(".popup__form");
-const cardNameInput = cardForm.querySelector(".popup__input_type_card-name");
-const cardLinkInput = cardForm.querySelector(".popup__input_type_url");
-
-const imageModalWindow = document.querySelector(".popup_type_image");
-const imageElement = imageModalWindow.querySelector(".popup__image");
-const imageCaption = imageModalWindow.querySelector(".popup__caption");
-
-const openProfileFormButton = document.querySelector(".profile__edit-button");
-const openCardFormButton = document.querySelector(".profile__add-button");
-
-const profileTitle = document.querySelector(".profile__title");
-const profileDescription = document.querySelector(".profile__description");
-const profileAvatar = document.querySelector(".profile__image");
-
-const avatarFormModalWindow = document.querySelector(".popup_type_edit-avatar");
-const avatarForm = avatarFormModalWindow.querySelector(".popup__form");
-const avatarInput = avatarForm.querySelector(".popup__input");
-
-const handlePreviewPicture = ({ name, link }) => {
-  imageElement.src = link;
-  imageElement.alt = name;
-  imageCaption.textContent = name;
-  openModalWindow(imageModalWindow);
+/**
+ * Делает кнопку отправки неактивной
+ */
+const disableSubmitButton = (submitButton, inactiveButtonClass) => {
+  submitButton.classList.add(inactiveButtonClass);
+  submitButton.setAttribute('disabled', true);
 };
 
-const handleProfileFormSubmit = (evt) => {
-  evt.preventDefault();
-  profileTitle.textContent = profileTitleInput.value;
-  profileDescription.textContent = profileDescriptionInput.value;
-  closeModalWindow(profileFormModalWindow);
+/**
+ * Делает кнопку отправки активной
+ */
+const enableSubmitButton = (submitButton, inactiveButtonClass) => {
+  submitButton.classList.remove(inactiveButtonClass);
+  submitButton.removeAttribute('disabled');
 };
 
-const handleAvatarFromSubmit = (evt) => {
-  evt.preventDefault();
-  profileAvatar.style.backgroundImage = `url(${avatarInput.value})`;
-  closeModalWindow(avatarFormModalWindow);
+/**
+ * Проверяет, есть ли невалидные поля
+ */
+const hasInvalidInput = (inputList) =>
+  inputList.some((inputItem) => !inputItem.validity.valid);
+
+/**
+ * Переключает состояние кнопки сабмита
+ */
+const toggleButtonState = (
+  inputList,
+  submitButton,
+  inactiveButtonClass
+) => {
+  if (hasInvalidInput(inputList)) {
+    disableSubmitButton(submitButton, inactiveButtonClass);
+  } else {
+    enableSubmitButton(submitButton, inactiveButtonClass);
+  }
 };
 
-const handleCardFormSubmit = (evt) => {
-  evt.preventDefault();
-  placesWrap.prepend(
-    createCardElement(
-      {
-        name: cardNameInput.value,
-        link: cardLinkInput.value,
-      },
-      {
-        onPreviewPicture: handlePreviewPicture,
-        onLikeIcon: likeCard,
-        onDeleteCard: deleteCard,
-      }
-    )
+/**
+ * Показывает ошибку у поля ввода
+ */
+const showInputError = (
+  formElement,
+  inputElement,
+  inputErrorClass,
+  errorMessage,
+  errorClass
+) => {
+  const errorNode = formElement.querySelector(
+    `#${inputElement.id}-error`
   );
 
-  closeModalWindow(cardFormModalWindow);
+  inputElement.classList.add(inputErrorClass);
+  errorNode.textContent = errorMessage;
+  errorNode.classList.add(errorClass);
 };
 
-// EventListeners
-profileForm.addEventListener("submit", handleProfileFormSubmit);
-cardForm.addEventListener("submit", handleCardFormSubmit);
-avatarForm.addEventListener("submit", handleAvatarFromSubmit);
-
-openProfileFormButton.addEventListener("click", () => {
-  profileTitleInput.value = profileTitle.textContent;
-  profileDescriptionInput.value = profileDescription.textContent;
-  openModalWindow(profileFormModalWindow);
-});
-
-profileAvatar.addEventListener("click", () => {
-  avatarForm.reset();
-  openModalWindow(avatarFormModalWindow);
-});
-
-openCardFormButton.addEventListener("click", () => {
-  cardForm.reset();
-  openModalWindow(cardFormModalWindow);
-});
-
-// отображение карточек
-initialCards.forEach((data) => {
-  placesWrap.append(
-    createCardElement(data, {
-      onPreviewPicture: handlePreviewPicture,
-      onLikeIcon: likeCard,
-      onDeleteCard: deleteCard,
-    })
+/**
+ * Скрывает ошибку у поля ввода
+ */
+const hideInputError = (
+  formElement,
+  inputElement,
+  inputErrorClass,
+  errorClass
+) => {
+  const errorNode = formElement.querySelector(
+    `#${inputElement.id}-error`
   );
-});
 
-//настраиваем обработчики закрытия попапов
-const allPopups = document.querySelectorAll(".popup");
-allPopups.forEach((popup) => {
-  setCloseModalWindowEventListeners(popup);
-});
+  inputElement.classList.remove(inputErrorClass);
+  errorNode.textContent = '';
+  errorNode.classList.remove(errorClass);
+};
+
+/**
+ * Проверяет валидность одного поля
+ */
+const checkInputValidity = (
+  formElement,
+  inputElement,
+  inputErrorClass,
+  errorClass
+) => {
+  if (inputElement.validity.patternMismatch) {
+    inputElement.setCustomValidity(
+      inputElement.validity.tooShort? `Поле должно содержать от ${inputElement.getAttribute('minlength')} до ${inputElement.getAttribute('maxlength')} символов.` : inputElement.dataset.errorMessage
+    );
+  } else {
+    inputElement.setCustomValidity('');
+  }
+
+  if (!inputElement.validity.valid) {
+    showInputError(
+      formElement,
+      inputElement,
+      inputErrorClass,
+      inputElement.validationMessage,
+      errorClass
+    );
+    return;
+  }
+
+  hideInputError(
+    formElement,
+    inputElement,
+    inputErrorClass,
+    errorClass
+  );
+};
+
+/**
+ * Навешивает обработчики на поля формы
+ */
+const setEventListeners = (
+  formElement,
+  inputSelector,
+  inputErrorClass,
+  errorClass,
+  submitButton,
+  inactiveButtonClass
+) => {
+  const formInputs = Array.from(
+    formElement.querySelectorAll(inputSelector)
+  );
+
+  toggleButtonState(
+    formInputs,
+    submitButton,
+    inactiveButtonClass
+  );
+
+  formInputs.forEach((inputField) => {
+    inputField.addEventListener('input', () => {
+      checkInputValidity(
+        formElement,
+        inputField,
+        inputErrorClass,
+        errorClass
+      );
+
+      toggleButtonState(
+        formInputs,
+        submitButton,
+        inactiveButtonClass
+      );
+    });
+  });
+};
+
+/**
+ * Инициализация валидации форм
+ */
+export const enableValidation = (validationSettings) => {
+  const {
+    formSelector,
+    inputSelector,
+    submitButtonSelector,
+    inactiveButtonClass,
+    inputErrorClass,
+    errorClass
+  } = validationSettings;
+
+  const forms = Array.from(
+    document.querySelectorAll(formSelector)
+  );
+
+  forms.forEach((formElement) => {
+    const submitButton = formElement.querySelector(
+      submitButtonSelector
+    );
+
+    const inputs = Array.from(
+      formElement.querySelectorAll(inputSelector)
+    );
+
+    toggleButtonState(
+      inputs,
+      submitButton,
+      inactiveButtonClass
+    );
+
+    setEventListeners(
+      formElement,
+      inputSelector,
+      inputErrorClass,
+      errorClass,
+      submitButton,
+      inactiveButtonClass
+    );
+  });
+};
+
+/**
+ * Сброс состояния валидации формы
+ */
+export const clearValidation = (
+  formElement,
+  validationSettings
+) => {
+  const {
+    inputSelector,
+    submitButtonSelector,
+    inactiveButtonClass,
+    inputErrorClass,
+    errorClass
+  } = validationSettings;
+
+  const submitButton = formElement.querySelector(
+    submitButtonSelector
+  );
+
+  const inputs = Array.from(
+    formElement.querySelectorAll(inputSelector)
+  );
+
+  disableSubmitButton(
+    submitButton,
+    inactiveButtonClass
+  );
+
+  inputs.forEach((inputField) => {
+    hideInputError(
+      formElement,
+      inputField,
+      inputErrorClass,
+      errorClass
+    );
+  });
+
+  toggleButtonState(
+    inputs,
+    submitButton,
+    inactiveButtonClass
+  );
+};
